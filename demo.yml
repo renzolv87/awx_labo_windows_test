@@ -1,0 +1,50 @@
+---
+- hosts: "{{ hosts }}"
+  tasks:
+  - name: Creamos un directorio temporal para descargar el apache
+    win_file:
+      path: C:\Temp
+      state: directory
+  - name: Download apache 
+    win_get_url:
+      url: https://archive.apache.org/dist/httpd/binaries/win32/httpd-2.2.25-win32-x86-no_ssl.msi
+      dest: C:\Temp
+  - name: Install package
+    win_package: 
+      path: 'C:\Temp\httpd-2.2.25-win32-x86-no_ssl.msi'
+      state: present
+  - name: Set ServerAdmin email address
+    win_lineinfile:
+      path: 'C:\Program Files (x86)\Apache Software Foundation\Apache2.2\conf\httpd.conf'
+      regex: '^ServerAdmin'
+      line: 'ServerAdmin renzo@windows.com'
+  - name: creamos pagina de bienvenida
+    win_copy:
+      content: 'ciao!!!'
+      dest: 'C:\Program Files (x86)\Apache Software Foundation\Apache2.2\htdocs\index.html'
+  - name: Validar si existe el servicio Apache2.2
+    win_service:
+      name: Apache2.2 
+    register: apache_service
+  - name: ver contenido de la variable apache_service
+    debug:
+      msg: "{{ apache_service }}" 
+  - name: creo el servicio Apache2.2 si no existe
+    win_shell: '"C:\Program Files (x86)\Apache Software Foundation\Apache2.2\bin\httpd.exe" -k install'
+    args:
+      executable: cmd
+    when: not apache_service.exists
+  - name: levantamos el serivcio Apache2.2
+    win_service:
+      name: Apache2.2
+      state: started
+  - name: abrir el puerto 80
+    win_firewall_rule:
+      name: HTTP
+      localport: 80
+      action: allow
+      direction: in
+      protocol: tcp
+      state: present
+      enabled: yes
+    
